@@ -1,4 +1,3 @@
-
 plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
@@ -6,13 +5,15 @@ plugins {
 
 android {
     compileSdk 34
+
     defaultConfig {
-        applicationId "com.example.planer"
+        applicationId "com.example.planer 
         minSdk 21
         targetSdk 34
         versionCode 1
         versionName "1.0"
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -31,3 +32,4 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage:20.3.0'
     implementation 'com.google.android.gms:play-services-auth:21.0.0'
 }
+
