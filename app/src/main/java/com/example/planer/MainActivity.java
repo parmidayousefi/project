@@ -1,24 +1,98 @@
-package com.example.planer;
+
+package com.example.myapp;
 
 import android.os.Bundle;
-
-import androidx.activity.EdgeToEdge;
+import android.view.View;
+import android.widget.EditText;
+import android.widget.Toast;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import com.example.myapp.adapters.TodoAdapter;
+import com.example.myapp.models.TodoItem;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
+
+    private FirebaseFirestore db;
+    private CollectionReference todosRef;
+    private List<TodoItem> todoList;
+    private TodoAdapter adapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
+
+        BottomNavigationView nav = findViewById(R.id.bottom_navigation);
+        nav.setOnItemSelectedListener(item -> {
+            if (item.getItemId() == R.id.nav_media) {
+                startActivity(new Intent(this, com.example.myapp.activities.MediaActivity.class));
+                return true;
+            }
+            return true;
         });
+
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "User not logged in!", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        db = FirebaseFirestore.getInstance();
+        todosRef = db.collection("users").document(user.getUid()).collection("todos");
+
+        RecyclerView recyclerView = findViewById(R.id.todo_recycler);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        todoList = new ArrayList<>();
+        adapter = new TodoAdapter(todoList);
+        recyclerView.setAdapter(adapter);
+
+        FloatingActionButton fab = findViewById(R.id.fab_add);
+        fab.setOnClickListener(v -> showAddTodoDialog());
+
+        loadTodos();
+    }
+
+    private void loadTodos() {
+        todosRef.get().addOnSuccessListener(queryDocumentSnapshots -> {
+            todoList.clear();
+            for (DocumentSnapshot doc : queryDocumentSnapshots) {
+                TodoItem item = doc.toObject(TodoItem.class);
+                todoList.add(item);
+            }
+            adapter.notifyDataSetChanged();
+        });
+    }
+
+    private void showAddTodoDialog() {
+        EditText input = new EditText(this);
+        input.setHint("Enter task title");
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("New Task")
+            .setView(input)
+            .setPositiveButton("Add", (dialog, which) -> {
+                String title = input.getText().toString().trim();
+                if (!title.isEmpty()) {
+                    String id = UUID.randomUUID().toString();
+                    TodoItem newItem = new TodoItem(id, title, false);
+                    todosRef.document(id).set(newItem).addOnSuccessListener(unused -> {
+                        todoList.add(newItem);
+                        adapter.notifyItemInserted(todoList.size() - 1);
+                        Toast.makeText(this, "Task added", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 }
