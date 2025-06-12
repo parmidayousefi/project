@@ -5,7 +5,7 @@ plugins {
 
 android {
     compileSdk 34
-
+ namespace "com.example.planer"
     defaultConfig {
         applicationId "com.example.planer" 
         minSdk 21
