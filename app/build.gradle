@@ -5,10 +5,11 @@ plugins {
 
 android {
     compileSdk 34
- namespace "com.example.planer"
+
+    namespace "com.example.planer"
+
     defaultConfig {
         applicationId "com.example.planer"
-
         minSdk 21
         targetSdk 34
         versionCode 1
@@ -33,4 +34,5 @@ dependencies {
     implementation 'com.google.firebase:firebase-storage:20.3.0'
     implementation 'com.google.android.gms:play-services-auth:21.0.0'
 }
+
 
