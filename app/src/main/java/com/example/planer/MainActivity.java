@@ -1,24 +1,30 @@
 
 package com.example.myapp;
 
+import android.app.AlarmManager;
+import android.app.DatePickerDialog;
+import android.app.PendingIntent;
+import android.app.TimePickerDialog;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
-import androidx.annotation.NonNull;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.example.myapp.adapters.TodoAdapter;
 import com.example.myapp.models.TodoItem;
+import com.example.myapp.alarms.AlarmReceiver;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -71,28 +77,61 @@ public class MainActivity extends AppCompatActivity {
                 todoList.add(item);
             }
             adapter.notifyDataSetChanged();
+
+            if (todoList.isEmpty()) {
+                Toast.makeText(this, "No tasks yet!", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
     private void showAddTodoDialog() {
         EditText input = new EditText(this);
         input.setHint("Enter task title");
+
         new android.app.AlertDialog.Builder(this)
             .setTitle("New Task")
             .setView(input)
-            .setPositiveButton("Add", (dialog, which) -> {
+            .setPositiveButton("Next", (dialog, which) -> {
                 String title = input.getText().toString().trim();
                 if (!title.isEmpty()) {
-                    String id = UUID.randomUUID().toString();
-                    TodoItem newItem = new TodoItem(id, title, false);
-                    todosRef.document(id).set(newItem).addOnSuccessListener(unused -> {
-                        todoList.add(newItem);
-                        adapter.notifyItemInserted(todoList.size() - 1);
-                        Toast.makeText(this, "Task added", Toast.LENGTH_SHORT).show();
-                    });
+                    showDateTimePicker(title);
                 }
             })
             .setNegativeButton("Cancel", null)
             .show();
+    }
+
+    private void showDateTimePicker(String title) {
+        final Calendar calendar = Calendar.getInstance();
+
+        DatePickerDialog datePicker = new DatePickerDialog(this, (view, year, month, day) -> {
+            TimePickerDialog timePicker = new TimePickerDialog(this, (tpView, hour, minute) -> {
+                calendar.set(year, month, day, hour, minute);
+
+                String id = UUID.randomUUID().toString();
+                TodoItem newItem = new TodoItem(id, title, false);
+                todosRef.document(id).set(newItem).addOnSuccessListener(unused -> {
+                    todoList.add(newItem);
+                    adapter.notifyItemInserted(todoList.size() - 1);
+                    Toast.makeText(this, "Task added", Toast.LENGTH_SHORT).show();
+
+                    setAlarm(calendar, title);
+                });
+
+            }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), true);
+            timePicker.show();
+        }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+        datePicker.show();
+    }
+
+    private void setAlarm(Calendar calendar, String taskTitle) {
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(this, AlarmReceiver.class);
+        intent.putExtra("taskTitle", taskTitle);
+
+        int requestCode = (int) System.currentTimeMillis();
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, requestCode, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        alarmManager.set(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
 }
